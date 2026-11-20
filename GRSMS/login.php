@@ -102,6 +102,10 @@ if (session_status() === PHP_SESSION_NONE) {
     .pw-wrap input {
       padding-right: 42px;
     }
+    .pw-wrap input::-ms-reveal,
+    .pw-wrap input::-ms-clear {
+      display: none;
+    }
     .eye-btn {
       position: absolute;
       right: 8px;
@@ -115,9 +119,13 @@ if (session_status() === PHP_SESSION_NONE) {
       border-radius: 6px;
       color: #64748b;
       cursor: pointer;
+      caret-color: transparent;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+    }
+    .eye-btn svg {
+      pointer-events: none;
     }
     .eye-btn:hover,
     .eye-btn.active {
@@ -197,8 +205,8 @@ if (session_status() === PHP_SESSION_NONE) {
                 type="button"
                 id="togglePwBtn"
                 class="eye-btn"
-                aria-label="Show Or Hold To Peek At Password"
-                title="Click To Toggle Or Press And Hold To Peek"
+                aria-label="Show or Hold to Peek at Password"
+                title="Click to Toggle or Press and Hold to Peek"
               >
                 <svg id="eyeOpenIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -211,7 +219,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 </svg>
               </button>
             </div>
-            <span class="field-hint">8 To 12 Characters only.</span>
+            <span class="field-hint">8 to 12 Characters only.</span>
           </div>
           <button type="submit" class="btn btn-green" style="width:100%;">Log In</button>
           <div id="loginErr" class="msg-err"></div>
@@ -220,7 +228,7 @@ if (session_status() === PHP_SESSION_NONE) {
         <p class="helper">Accounts marked Inactive cannot Log In. Ask a Manager or Admin to reactivate yours.</p>
 
         <div class="switch-link">
-          New Staff Member? <a href="signup.php">Create A Staff Account</a>
+          New Staff Member? <a href="signup.php">Create a Staff Account</a>
         </div>
       </div>
     </main>

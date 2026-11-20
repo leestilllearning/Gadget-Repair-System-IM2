@@ -209,6 +209,7 @@ $isAdmin = (($_SESSION['staff']['role'] ?? '') === 'Admin');
     }
   </style>
 </head>
+
 <body>
   <div class="layout">
     <?php include __DIR__ . '/partials/nav.php'; ?>
