@@ -109,7 +109,7 @@ $defaultRecorder = $_SESSION['staff']['full_name'] ?? 'Camille Torres';
 
         <div id="detailPanel">
           <div class="card">
-            <p style="color:#64748b;margin:0;">Select an Invoice on the Left to view Balance and Record a Payment.</p>
+            <p style="color:#64748b;margin:0;">Select an Invoice on the Left to View Balance and Record a Payment.</p>
           </div>
         </div>
       </div>

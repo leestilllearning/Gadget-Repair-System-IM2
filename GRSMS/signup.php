@@ -110,6 +110,10 @@ if (session_status() === PHP_SESSION_NONE) {
     .pw-wrap input {
       padding-right: 42px;
     }
+    .pw-wrap input::-ms-reveal,
+    .pw-wrap input::-ms-clear {
+      display: none;
+    }
     .eye-btn {
       position: absolute;
       right: 8px;
@@ -123,9 +127,13 @@ if (session_status() === PHP_SESSION_NONE) {
       border-radius: 6px;
       color: #64748b;
       cursor: pointer;
+      caret-color: transparent;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
+    }
+    .eye-btn svg {
+      pointer-events: none;
     }
     .eye-btn:hover,
     .eye-btn.active {
