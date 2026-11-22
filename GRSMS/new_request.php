@@ -125,7 +125,7 @@ $techs = $pdo->query("
                 placeholder="09XXXXXXXXX"
                 required
               >
-              <span class="field-hint">11 Digits only (Max 11 Characters).</span>
+              <span class="field-hint"> </span>
             </div>
             <div class="field">
               <label for="email">Email</label>
@@ -195,13 +195,13 @@ $techs = $pdo->query("
 
           <div id="foreignAddressFields" style="display:none;">
             <div class="field" style="margin-bottom:0;">
-              <label for="foreign_address">Foreign / Outside Region V Address</label>
+              <label for="foreign_address">For foreign countries / Outside of Region V Address</label>
               <textarea
                 id="foreign_address"
                 rows="2"
                 placeholder="Enter complete address (street, city, state/region, postal code, country)..."
               ></textarea>
-              <span class="field-hint">Province, City/Municipality, Barangay, and ZIP Code are not required for foreign or outside-Region V customers.</span>
+              
             </div>
           </div>
         </section>
@@ -609,7 +609,7 @@ $techs = $pdo->query("
           serialInput.setSelectionRange(start, end);
         }
       }
-      serialCounter.textContent = `${serialInput.value.length} / 15 characters · Auto-uppercase`;
+      serialCounter.textContent = `${serialInput.value.length} / 15 characters`;
     }
     serialInput.addEventListener('input', updateSerialInput);
     updateSerialInput();
