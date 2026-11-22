@@ -110,10 +110,6 @@ if (session_status() === PHP_SESSION_NONE) {
     .pw-wrap input {
       padding-right: 42px;
     }
-    .pw-wrap input::-ms-reveal,
-    .pw-wrap input::-ms-clear {
-      display: none;
-    }
     .eye-btn {
       position: absolute;
       right: 8px;
@@ -127,13 +123,9 @@ if (session_status() === PHP_SESSION_NONE) {
       border-radius: 6px;
       color: #64748b;
       cursor: pointer;
-      caret-color: transparent;
       user-select: none;
       -webkit-user-select: none;
       touch-action: manipulation;
-    }
-    .eye-btn svg {
-      pointer-events: none;
     }
     .eye-btn:hover,
     .eye-btn.active {
@@ -177,7 +169,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <aside class="auth-aside">
       <div>
         <h2>Gadget Repair Management System</h2>
-        <p>Create a Staff Account to Access Repair Ticket Intake, Diagnostics, Billing, and Customer Records.</p>
+        <p>Create a Staff Account to Access Repair Ticket Intake, Diagnostics Tracking, Billing, and Customer Records.</p>
       </div>
       <p style="font-size:12px;">Passwords are Hashed Securely before Saving to the Database.</p>
     </aside>
@@ -299,7 +291,6 @@ if (session_status() === PHP_SESSION_NONE) {
     const specializationField = document.getElementById('specializationField');
     const specializationSelect = document.getElementById('specialization');
 
-    // Enforce digits-only and stop typing at 11 characters
     contactInput.addEventListener('input', () => {
       const digitsOnly = contactInput.value.replace(/\D/g, '').slice(0, 11);
       if (contactInput.value !== digitsOnly) {
@@ -338,7 +329,6 @@ if (session_status() === PHP_SESSION_NONE) {
       const options = roleSpecializations[selectedRole] || [];
 
       if (options.length === 0) {
-        // Manager -> NULL (hide specialization dropdown)
         specializationField.style.display = 'none';
         specializationSelect.required = false;
         specializationSelect.innerHTML = '<option value="">None (NULL)</option>';
