@@ -12,54 +12,23 @@ $current   = basename($_SERVER['PHP_SELF']);
 $allNavItems = [
     'repair_requests.php'   => 'Repair requests',
     'new_request.php'       => 'New request',
-    'customer_gadgets.php' => 'Customers',
+    'customer_gadgets.php'  => 'Customers',
     'service_catalog.php'   => 'Services',
     'invoices.php'          => 'Invoices',
     'staff_accounts.php'    => 'Staff',
 ];
 
-// Role-based tab visibility
 $roleAccess = [
-    'Admin'        => ['repair_requests.php', 'new_request.php', 'customer_gadgets.php', 'service_catalog.php', 'invoices.php', 'staff_accounts.php'],
+    'Admin'        => ['repair_requests.php', 'new_request.php', 'customer_gadgets.php', 'invoices.php', 'staff_accounts.php'],
     'Manager'      => ['repair_requests.php', 'new_request.php', 'customer_gadgets.php', 'service_catalog.php', 'invoices.php', 'staff_accounts.php'],
-    'Receptionist' => ['repair_requests.php', 'new_request.php', 'customer_gadgets.php', 'service_catalog.php', 'invoices.php'],
-    'Technician'   => ['repair_requests.php', 'customer_gadgets.php', 'service_catalog.php'],
-    'Cashier'      => ['repair_requests.php', 'invoices.php'],
+    'Receptionist' => ['repair_requests.php', 'new_request.php', 'customer_gadgets.php'],
+    'Technician'   => ['repair_requests.php'],
+    'Cashier'      => ['invoices.php'],
 ];
 
-$allowedHrefs = $roleAccess[$staffRole] ?? array_keys($allNavItems);
+$allowedHrefs = $roleAccess[$staffRole] ?? [];
 $navItems = array_intersect_key($allNavItems, array_flip($allowedHrefs));
 ?>
-<style>
-  .sidebar {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    width: 220px !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-    z-index: 999 !important;
-  }
-
-  .main {
-    margin-left: 220px !important;
-  }
-
-  @media (max-width: 820px) {
-    .sidebar {
-      position: static !important;
-      width: 100% !important;
-      height: auto !important;
-      overflow-y: visible !important;
-    }
-
-    .main {
-      margin-left: 0 !important;
-    }
-  }
-</style>
-
 <style>
   .layout {
     display: block !important;
@@ -98,7 +67,6 @@ $navItems = array_intersect_key($allNavItems, array_flip($allowedHrefs));
     }
   }
 </style>
-
 
 <aside class="sidebar">
   <div>
