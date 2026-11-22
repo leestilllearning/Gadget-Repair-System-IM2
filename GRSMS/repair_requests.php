@@ -2,6 +2,11 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once __DIR__ . '/partials/auth.php';
+requireRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
+
+$staffRole = $_SESSION['staff']['role'] ?? '';
+$canCreateRequest = in_array($staffRole, ['Receptionist', 'Manager', 'Admin'], true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -289,7 +294,9 @@ if (session_status() === PHP_SESSION_NONE) {
             type="text"
             placeholder="Search Customer, Gadget or Request No."
           >
-          <a href="new_request.php" class="btn-green">New Request</a>
+          <?php if ($canCreateRequest): ?>
+            <a href="new_request.php" class="btn-green">New Request</a>
+          <?php endif; ?>
         </div>
       </div>
 
