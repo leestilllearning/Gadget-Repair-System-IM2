@@ -4,11 +4,17 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 $currentScript = basename($_SERVER['PHP_SELF'] ?? '');
-if ($currentScript !== 'login.php' && empty($_SESSION['staff'])) {
+$publicPages = ['login.php', 'signup.php', 'logout.php'];
+
+if (!in_array($currentScript, $publicPages, true) && empty($_SESSION['staff'])) {
     header('Location: login.php');
     exit;
 }
 
-//snippet ensures a PHP session is active and blocks unauthenticated users 
-//from viewing protected pages by redirecting anyone without an active session 
-//(other than on login.php) back to login.php
+function requireRole(array $allowedRoles, string $fallbackUrl = 'index.php?from_login=1'): void {
+    $role = $_SESSION['staff']['role'] ?? '';
+    if (!in_array($role, $allowedRoles, true)) {
+        header('Location: ' . $fallbackUrl);
+        exit;
+    }
+}
