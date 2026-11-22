@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 20, 2026 at 03:36 PM
+-- Generation Time: Nov 22, 2026 at 09:25 AM
 -- Server version: 10.11.16-MariaDB
 -- PHP Version: 8.5.12
 
@@ -46,7 +46,7 @@ CREATE TABLE `customer` (
 --
 
 INSERT INTO `customer` (`customer_ID`, `first_name`, `last_name`, `middle_name`, `contact_number`, `email`, `date_registered`, `barangay`, `city`, `province`, `zip_code`) VALUES
-('CUS-001', 'Miko', 'Ocfemia', NULL, '09171112233', 'miko.ocfemia@example.com', '2026-10-01 08:14:00', 'Sagpon', 'Daraga', 'Albay', '4501'),
+('CUS-001', 'Miko', 'Ocfemia', 'Nidea', '09171112233', 'miko.ocfemia@example.com', '2026-10-01 08:14:00', 'SaGedli', 'Guinobatan', 'Albay', '4501'),
 ('CUS-002', 'John', 'Doe', 'Smith', '09172223344', 'john.doe@example.com', '2026-10-01 10:37:00', 'Bagumbayan', 'Daraga', 'Albay', '4501'),
 ('CUS-003', 'Jane', 'Smith', 'Doe', '09173334455', 'jane.smith@example.com', '2026-10-02 09:22:00', 'Binitayan', 'Daraga', 'Albay', '4501'),
 ('CUS-004', 'Robert', 'Johnson', 'Lee', '09174445566', 'robert.j@example.com', '2026-10-03 11:08:00', 'Kimantao', 'Daraga', 'Albay', '4501'),
@@ -74,8 +74,50 @@ INSERT INTO `customer` (`customer_ID`, `first_name`, `last_name`, `middle_name`,
 ('CUS-026', 'Mariel', 'Domingo', 'Reyes', '09201112233', 'mariel.domingo@example.com', '2026-10-24 09:16:00', 'Bagumbayan', 'Daraga', 'Albay', '4501'),
 ('CUS-027', 'Francis', 'Aguilar', 'Mendoza', '09202223344', 'francis.aguilar@example.com', '2026-10-24 15:39:00', 'San Roque', 'Legazpi City', 'Albay', '4500'),
 ('CUS-028', 'Denise', 'Morales', 'Garcia', '09203334455', 'denise.morales@example.com', '2026-10-25 12:23:00', 'Sipi', 'Daraga', 'Albay', '4501'),
-('CUS-029', 'Adrian', 'Flores', 'Ramos', '09204445566', 'adrian.flores@example.com', '2026-10-26 08:44:00', 'Arimbay', 'Legazpi City', 'Albay', '4500'),
-('CUS-030', 'Katrina', 'Abad', 'Santos', '09205556677', 'katrina.abad@example.com', '2026-10-27 14:58:00', 'Bañag', 'Daraga', 'Albay', '4501');
+('CUS-031', 'Lambert', 'Knight', NULL, '09231231323', 'lknight@gmail.com', '2026-11-20 10:28:39', 'Sagpon', 'Legazpi', 'Albay', '4500');
+
+--
+-- Triggers `customer`
+--
+DELIMITER $$
+CREATE TRIGGER `trg_customer_before_delete` BEFORE DELETE ON `customer` FOR EACH ROW BEGIN
+  INSERT INTO `deleted_customer` (
+    `original_customer_ID`, `first_name`, `last_name`, `middle_name`,
+    `contact_number`, `email`, `barangay`, `city`, `province`, `zip_code`,
+    `date_registered`, `deleted_by`
+  ) VALUES (
+    OLD.`customer_ID`, OLD.`first_name`, OLD.`last_name`, OLD.`middle_name`,
+    OLD.`contact_number`, OLD.`email`, OLD.`barangay`, OLD.`city`, OLD.`province`, OLD.`zip_code`,
+    OLD.`date_registered`, CURRENT_USER()
+  );
+
+  DELETE p FROM `payment` p
+    JOIN `invoice` i ON p.`invoice_ID` = i.`invoice_ID`
+    JOIN `repair_request` r ON i.`repair_request_ID` = r.`repair_request_ID`
+    JOIN `gadget` g ON r.`gadget_ID` = g.`gadget_ID`
+   WHERE g.`customer_ID` = OLD.`customer_ID`;
+
+  DELETE i FROM `invoice` i
+    JOIN `repair_request` r ON i.`repair_request_ID` = r.`repair_request_ID`
+    JOIN `gadget` g ON r.`gadget_ID` = g.`gadget_ID`
+   WHERE g.`customer_ID` = OLD.`customer_ID`;
+
+  DELETE rs FROM `repair_service` rs
+    JOIN `repair_request` r ON rs.`repair_request_ID` = r.`repair_request_ID`
+    JOIN `gadget` g ON r.`gadget_ID` = g.`gadget_ID`
+   WHERE g.`customer_ID` = OLD.`customer_ID`;
+
+  DELETE sh FROM `status_history` sh
+    JOIN `repair_request` r ON sh.`repair_request_ID` = r.`repair_request_ID`
+    JOIN `gadget` g ON r.`gadget_ID` = g.`gadget_ID`
+   WHERE g.`customer_ID` = OLD.`customer_ID`;
+
+  DELETE r FROM `repair_request` r
+    JOIN `gadget` g ON r.`gadget_ID` = g.`gadget_ID`
+   WHERE g.`customer_ID` = OLD.`customer_ID`;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -99,6 +141,15 @@ CREATE TABLE `deleted_customer` (
   `deleted_by` varchar(150) NOT NULL,
   `deleted_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `deleted_customer`
+--
+
+INSERT INTO `deleted_customer` (`deleted_id`, `original_customer_ID`, `first_name`, `last_name`, `middle_name`, `contact_number`, `email`, `barangay`, `city`, `province`, `zip_code`, `date_registered`, `deleted_by`, `deleted_at`) VALUES
+(1, 'CUS-032', 'Jack', 'Loen', 'Hos', '09228381734', 'jhosleon@gmail.com', 'There', 'Somewhere', 'Sorsogon', '4600', '2026-11-20 10:46:47', 'Alex Eala', '2026-11-20 12:13:46'),
+(2, 'CUS-030', 'Katrina', 'Abad', 'Santos', '09205556677', 'katrina.abad@example.com', 'Bañag', 'Daraga', 'Albay', '4501', '2026-10-27 14:58:00', 'Alex Eala', '2026-11-20 12:14:03'),
+(3, 'CUS-029', 'Adrian', 'Flores', 'Ramos', '09204445566', 'adrian.flores@example.com', 'Arimbay', 'Legazpi City', 'Albay', '4500', '2026-10-26 08:44:00', 'root@localhost', '2026-11-20 12:21:11');
 
 -- --------------------------------------------------------
 
@@ -149,8 +200,7 @@ INSERT INTO `gadget` (`gadget_ID`, `customer_ID`, `category`, `brand`, `model`, 
 ('GAD-026', 'CUS-026', 'Tablet', 'Xiaomi', 'Pad 6', 'SN-XIA-1049', '2026-10-24 09:16:00'),
 ('GAD-027', 'CUS-027', 'Console', 'Sony', 'PlayStation 5 Slim', 'SN-SNY-1013', '2026-10-24 15:39:00'),
 ('GAD-028', 'CUS-028', 'Wireless Keyboard', 'Logitech', 'K380 Wireless Keyboard', 'SN-LOG-1041', '2026-10-25 12:23:00'),
-('GAD-029', 'CUS-029', 'Gaming Headset', 'Logitech', 'G Pro X Gaming Headset', 'SN-LOG-1024', '2026-10-26 08:44:00'),
-('GAD-030', 'CUS-030', 'Console', 'Nintendo', 'Switch OLED', 'SN-NIN-1033', '2026-10-27 14:58:00');
+('GAD-031', 'CUS-031', 'Laptop', 'Mac', 'Apple 29', '221332', '2026-11-20 10:28:39');
 
 -- --------------------------------------------------------
 
@@ -163,7 +213,7 @@ CREATE TABLE `invoice` (
   `repair_request_ID` varchar(20) NOT NULL,
   `date` datetime NOT NULL,
   `total` decimal(10,2) NOT NULL CHECK (`total` >= 0),
-  `status` varchar(30) NOT NULL CHECK (`status` in ('Unpaid','Partially Paid','Paid'))
+  `status` varchar(30) NOT NULL DEFAULT 'Unpaid'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -188,7 +238,7 @@ INSERT INTO `invoice` (`invoice_ID`, `repair_request_ID`, `date`, `total`, `stat
 ('INV-015', 'REQ-015', '2026-10-16 14:30:00', 2800.00, 'Partially Paid'),
 ('INV-016', 'REQ-016', '2026-10-16 16:15:00', 750.00, 'Paid'),
 ('INV-017', 'REQ-017', '2026-10-17 15:00:00', 1200.00, 'Paid'),
-('INV-018', 'REQ-018', '2026-10-19 16:30:00', 850.00, 'Unpaid'),
+('INV-018', 'REQ-018', '2026-10-19 16:30:00', 850.00, 'Pending'),
 ('INV-019', 'REQ-019', '2026-10-20 12:45:00', 2000.00, 'Paid'),
 ('INV-020', 'REQ-020', '2026-10-21 11:15:00', 950.00, 'Partially Paid'),
 ('INV-021', 'REQ-021', '2026-10-22 18:30:00', 1100.00, 'Paid'),
@@ -199,8 +249,7 @@ INSERT INTO `invoice` (`invoice_ID`, `repair_request_ID`, `date`, `total`, `stat
 ('INV-026', 'REQ-026', '2026-10-27 11:30:00', 1100.00, 'Paid'),
 ('INV-027', 'REQ-027', '2026-10-28 17:30:00', 2200.00, 'Paid'),
 ('INV-028', 'REQ-028', '2026-10-29 14:15:00', 750.00, 'Paid'),
-('INV-029', 'REQ-029', '2026-10-30 11:00:00', 700.00, 'Unpaid'),
-('INV-030', 'REQ-030', '2026-10-31 17:00:00', 1600.00, 'Paid');
+('INV-031', 'REQ-031', '2026-11-20 10:28:39', 4300.00, 'Pending');
 
 -- --------------------------------------------------------
 
@@ -251,8 +300,7 @@ INSERT INTO `payment` (`payment_ID`, `user_ID`, `invoice_ID`, `reference_number`
 ('PAY-026', 'USR-009', 'INV-026', 'REF-20261024-001', '2026-10-27 12:00:00', 1100.00, 'Completed'),
 ('PAY-027', 'USR-009', 'INV-027', 'REF-20261024-002', '2026-10-29 17:45:00', 2200.00, 'Completed'),
 ('PAY-028', 'USR-009', 'INV-028', 'REF-20261025-001', '2026-10-30 14:30:00', 750.00, 'Completed'),
-('PAY-029', 'USR-009', 'INV-029', 'REF-20261026-001', '2026-11-03 11:15:00', 700.00, 'Failed'),
-('PAY-030', 'USR-009', 'INV-030', 'REF-20261027-001', '2026-11-01 17:30:00', 1600.00, 'Completed');
+('PAY-031', 'USR-011', 'INV-003', 'Cash · GC-9921', '2026-11-20 04:56:54', 100.00, 'Pending');
 
 -- --------------------------------------------------------
 
@@ -304,8 +352,7 @@ INSERT INTO `repair_request` (`repair_request_ID`, `gadget_ID`, `received_by`, `
 ('REQ-026', 'GAD-026', 'USR-002', 'USR-006', '2026-10-24 09:16:00', 'Tablet charges intermittently due to damaged charging flex', 'Screen intact ,charging connection unstable', 'Tablet, charger'),
 ('REQ-027', 'GAD-027', 'USR-005', 'USR-008', '2026-10-24 15:39:00', 'Console fails to read game discs', 'Console powers on disc drive makes unusual noise', 'Console, power cable, controller'),
 ('REQ-028', 'GAD-028', 'USR-002', 'USR-008', '2026-10-25 12:23:00', 'Several wireless keyboard keys do not register when pressed', 'Keyboard casing intact selected keys unresponsive', 'Keyboard, USB receiver'),
-('REQ-029', 'GAD-029', 'USR-005', 'USR-008', '2026-10-26 08:44:00', 'Headset audio cable produces intermittent sound when moved', 'Headset physically intact and cable connection unstable', 'Headset, detachable cable'),
-('REQ-030', 'GAD-030', 'USR-002', 'USR-008', '2026-10-27 14:58:00', 'Console overheats during extended gaming sessions', 'Console powers on and cooling fan is unusually noisy', 'Console, dock, power adapter');
+('REQ-031', 'GAD-031', 'USR-011', 'USR-006', '2026-11-20 10:28:39', 'Broken LCD', 'not working', 'none');
 
 -- --------------------------------------------------------
 
@@ -354,8 +401,8 @@ INSERT INTO `repair_service` (`repair_service_ID`, `repair_request_ID`, `service
 ('RES-026', 'REQ-026', 'SER-043', 1, 1100.00),
 ('RES-027', 'REQ-027', 'SER-031', 1, 2200.00),
 ('RES-028', 'REQ-028', 'SER-038', 1, 750.00),
-('RES-029', 'REQ-029', 'SER-035', 1, 700.00),
-('RES-030', 'REQ-030', 'SER-033', 1, 1600.00);
+('RES-034', 'REQ-031', 'SER-001', 1, 2500.00),
+('RES-035', 'REQ-031', 'SER-016', 1, 1800.00);
 
 -- --------------------------------------------------------
 
@@ -438,7 +485,7 @@ CREATE TABLE `status_history` (
   `updated_by` varchar(20) NOT NULL,
   `status` varchar(30) NOT NULL,
   `date_update` datetime NOT NULL
-) ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `status_history`
@@ -557,14 +604,6 @@ INSERT INTO `status_history` (`status_history_ID`, `repair_request_ID`, `updated
 ('SHS-110', 'REQ-028', 'USR-008', 'Under Diagnosis', '2026-10-25 14:00:00'),
 ('SHS-111', 'REQ-028', 'USR-008', 'In Progress', '2026-10-26 09:00:00'),
 ('SHS-112', 'REQ-028', 'USR-008', 'Completed', '2026-10-29 13:45:00'),
-('SHS-113', 'REQ-029', 'USR-005', 'Pending', '2026-10-26 08:44:03'),
-('SHS-114', 'REQ-029', 'USR-008', 'Under Diagnosis', '2026-10-26 10:45:00'),
-('SHS-115', 'REQ-029', 'USR-008', 'In Progress', '2026-10-27 09:00:00'),
-('SHS-116', 'REQ-029', 'USR-008', 'Completed', '2026-10-30 10:30:00'),
-('SHS-117', 'REQ-030', 'USR-002', 'Pending', '2026-10-27 14:58:03'),
-('SHS-118', 'REQ-030', 'USR-008', 'Under Diagnosis', '2026-10-27 16:45:00'),
-('SHS-119', 'REQ-030', 'USR-008', 'In Progress', '2026-10-28 09:00:00'),
-('SHS-120', 'REQ-030', 'USR-008', 'Completed', '2026-10-31 16:30:00'),
 ('SHS-121', 'REQ-001', 'USR-005', 'Ready for Release', '2026-10-02 15:05:00'),
 ('SHS-122', 'REQ-002', 'USR-002', 'Ready for Release', '2026-10-03 11:05:00'),
 ('SHS-123', 'REQ-003', 'USR-005', 'Ready for Release', '2026-10-04 16:35:00'),
@@ -593,8 +632,6 @@ INSERT INTO `status_history` (`status_history_ID`, `repair_request_ID`, `updated
 ('SHS-146', 'REQ-026', 'USR-002', 'Ready for Release', '2026-10-27 11:35:00'),
 ('SHS-147', 'REQ-027', 'USR-005', 'Ready for Release', '2026-10-28 17:35:00'),
 ('SHS-148', 'REQ-028', 'USR-002', 'Ready for Release', '2026-10-29 14:20:00'),
-('SHS-149', 'REQ-029', 'USR-005', 'Ready for Release', '2026-10-30 11:05:00'),
-('SHS-150', 'REQ-030', 'USR-002', 'Ready for Release', '2026-10-31 17:05:00'),
 ('SHS-151', 'REQ-001', 'USR-005', 'Picked Up', '2026-10-02 15:37:00'),
 ('SHS-152', 'REQ-002', 'USR-002', 'Picked Up', '2026-10-04 12:37:00'),
 ('SHS-153', 'REQ-003', 'USR-005', 'Picked Up', '2026-10-05 10:07:00'),
@@ -615,7 +652,36 @@ INSERT INTO `status_history` (`status_history_ID`, `repair_request_ID`, `updated
 ('SHS-168', 'REQ-026', 'USR-002', 'Picked Up', '2026-10-27 12:07:00'),
 ('SHS-169', 'REQ-027', 'USR-005', 'Picked Up', '2026-10-29 17:52:00'),
 ('SHS-170', 'REQ-028', 'USR-002', 'Picked Up', '2026-10-30 14:37:00'),
-('SHS-171', 'REQ-030', 'USR-002', 'Picked Up', '2026-11-01 17:37:00');
+('SHS-201', 'REQ-001', 'USR-005', 'Received', '2026-11-18 09:00:00'),
+('SHS-202', 'REQ-002', 'USR-002', 'Received', '2026-11-18 10:15:00'),
+('SHS-203', 'REQ-003', 'USR-005', 'Received', '2026-11-18 11:30:00'),
+('SHS-204', 'REQ-004', 'USR-005', 'Pending', '2026-11-18 13:00:00'),
+('SHS-205', 'REQ-005', 'USR-002', 'Pending', '2026-11-18 14:10:00'),
+('SHS-206', 'REQ-006', 'USR-005', 'Pending', '2026-11-18 15:20:00'),
+('SHS-207', 'REQ-007', 'USR-004', 'Diagnosing', '2026-11-18 16:00:00'),
+('SHS-208', 'REQ-008', 'USR-004', 'Diagnosing', '2026-11-19 08:45:00'),
+('SHS-209', 'REQ-009', 'USR-006', 'Diagnosing', '2026-11-19 09:30:00'),
+('SHS-210', 'REQ-010', 'USR-004', 'Diagnosing', '2026-11-19 10:15:00'),
+('SHS-211', 'REQ-011', 'USR-006', 'Repairing', '2026-11-19 11:00:00'),
+('SHS-212', 'REQ-012', 'USR-004', 'Repairing', '2026-11-19 11:45:00'),
+('SHS-213', 'REQ-013', 'USR-008', 'Repairing', '2026-11-19 13:20:00'),
+('SHS-214', 'REQ-014', 'USR-003', 'Repairing', '2026-11-19 14:10:00'),
+('SHS-215', 'REQ-015', 'USR-007', 'Ready for pickup', '2026-11-19 15:00:00'),
+('SHS-216', 'REQ-016', 'USR-003', 'Ready for pickup', '2026-11-19 15:30:00'),
+('SHS-217', 'REQ-017', 'USR-003', 'Ready for pickup', '2026-11-19 16:00:00'),
+('SHS-218', 'REQ-018', 'USR-003', 'Ready for pickup', '2026-11-19 16:30:00'),
+('SHS-219', 'REQ-019', 'USR-002', 'Picked up', '2026-11-19 17:00:00'),
+('SHS-220', 'REQ-020', 'USR-005', 'Picked up', '2026-11-19 17:15:00'),
+('SHS-221', 'REQ-021', 'USR-002', 'Picked up', '2026-11-19 17:30:00'),
+('SHS-222', 'REQ-022', 'USR-002', 'Picked up', '2026-11-19 17:45:00'),
+('SHS-223', 'REQ-023', 'USR-009', 'Released', '2026-11-20 08:15:00'),
+('SHS-224', 'REQ-024', 'USR-009', 'Released', '2026-11-20 08:40:00'),
+('SHS-225', 'REQ-025', 'USR-009', 'Released', '2026-11-20 09:05:00'),
+('SHS-226', 'REQ-026', 'USR-006', 'Completed', '2026-11-20 09:20:00'),
+('SHS-227', 'REQ-027', 'USR-008', 'Completed', '2026-11-20 09:40:00'),
+('SHS-228', 'REQ-028', 'USR-008', 'Completed', '2026-11-20 09:55:00'),
+('SHS-231', 'REQ-031', 'USR-011', 'Received', '2026-11-20 10:28:39'),
+('SHS-237', 'REQ-031', 'USR-011', 'Repairing', '2026-11-20 11:28:19');
 
 -- --------------------------------------------------------
 
@@ -629,7 +695,7 @@ CREATE TABLE `system_user` (
   `last_name` varchar(250) NOT NULL,
   `middle_name` varchar(250) DEFAULT NULL,
   `username` varchar(100) NOT NULL,
-  `password_hash` varchar(12) NOT NULL,
+  `password_hash` varchar(250) NOT NULL,
   `contact_number` varchar(15) NOT NULL,
   `role` varchar(100) NOT NULL,
   `specialization` varchar(100) DEFAULT NULL,
@@ -641,17 +707,20 @@ CREATE TABLE `system_user` (
 --
 
 INSERT INTO `system_user` (`user_id`, `first_name`, `last_name`, `middle_name`, `username`, `password_hash`, `contact_number`, `role`, `specialization`, `account_status`) VALUES
-('USR-001', 'Alex', 'Reyes', 'Mendoza', 'admin_alex', 'Alex@1234567', '09171020001', 'Admin', 'System Management', 'Active'),
-('USR-002', 'Sarah', 'Gomez', 'Cruz', 'desk_sarah', 'Sarah@123456', '09171030002', 'Receptionist', 'Customer Intake', 'Active'),
-('USR-003', 'Dave', 'Santos', 'Ramos', 'tech_dave', 'Dave@1234567', '09171040003', 'Technician', 'Mobile & Micro-soldering', 'Active'),
-('USR-004', 'Marco', 'Cruz', NULL, 'tech_marco', 'Marco@123456', '09171050004', 'Technician', 'Laptop & Desktop Hardware', 'Active'),
-('USR-005', 'Elena', 'Navarro', 'Bautista', 'desk_elena', 'Elena@123456', '09171060005', 'Receptionist', 'Customer Intake & Billing', 'Active'),
-('USR-006', 'Carlo', 'Mendoza', 'Aquino', 'tech_carlo', 'Carlo@123456', '09171070006', 'Technician', 'Apple & Tablet Devices', 'Active'),
-('USR-007', 'Patricia', 'Villanueva', 'Torres', 'tech_pat', 'Pat@12345678', '09171080007', 'Technician', 'Motherboard & IC Repair', 'Active'),
-('USR-008', 'Jericho', 'Bautista', NULL, 'tech_jericho', 'Jericho@1234', '09171090008', 'Technician', 'Console & Peripherals', 'Active'),
-('USR-009', 'Camille', 'Torres', 'Salazar', 'cashier_camille', 'Camille@1234', '09171100009', 'Cashier', 'Payments & Release', 'Active'),
-('USR-010', 'Rafael', 'Aquino', 'Dela Rosa', 'admin_rafael', 'Rafael@12345', '09171200010', 'Admin', 'Operations Supervisor', 'Inactive'),
-('USR-011', 'Meret', 'Bannerman', 'Manon', 'manager_manon', 'Meret@123456', '09172672010', 'Manager', NULL, 'Active');
+('USR-001', 'Alex', 'Reyes', 'Mendoza', 'admin_alex', 'hash_admin123', '09171020001', 'Admin', 'System Management', 'Active'),
+('USR-002', 'Sarah', 'Gomez', 'Cruz', 'desk_sarah', 'hash_sarah123', '09171030002', 'Receptionist', 'Customer Intake', 'Active'),
+('USR-003', 'Dave', 'Santos', 'Ramos', 'tech_dave', 'hash_dave123', '09171040003', 'Technician', 'Mobile & Micro-soldering', 'Active'),
+('USR-004', 'Marco', 'Cruz', NULL, 'tech_marco', 'hash_marco123', '09171050004', 'Technician', 'Laptop & Desktop Hardware', 'Active'),
+('USR-005', 'Elena', 'Navarro', 'Bautista', 'desk_elena', 'hash_elena123', '09171060005', 'Receptionist', 'Customer Intake & Billing', 'Active'),
+('USR-006', 'Carlo', 'Mendoza', 'Aquino', 'tech_carlo', 'hash_carlo123', '09171070006', 'Technician', 'Apple & Tablet Devices', 'Active'),
+('USR-007', 'Patricia', 'Villanueva', 'Torres', 'tech_pat', 'hash_pat123', '09171080007', 'Technician', 'Motherboard & IC Repair', 'Active'),
+('USR-008', 'Jericho', 'Bautista', NULL, 'tech_jericho', 'hash_jericho123', '09171090008', 'Technician', 'Console & Peripherals', 'Active'),
+('USR-009', 'Camille', 'Torres', 'Salazar', 'cashier_camille', 'hash_camille123', '09171100009', 'Cashier', 'Payments & Release', 'Active'),
+('USR-010', 'Rafael', 'Aquino', 'Dela Rosa', 'admin_rafael', 'hash_rafael123', '09171200010', 'Admin', 'Operations Supervisor', 'Inactive'),
+('USR-011', 'Lorraine', 'Bea', NULL, 'manager_bea', '$2y$12$ALDbUs3wk3ZZwq21M7hkbeutMhxVx/gYNesLENZ5Nuzt.QO6FrYbu', '09123153141', 'Manager', NULL, 'Active'),
+('USR-012', 'Sarah', 'Labathi', NULL, 'desk_sara', '$2y$12$.iMbC4Zg66CNMc2O/O6/xuf0ahLRD4Kudy869JNCnomlGlL6NK31O', '09267313521', 'Receptionist', 'Customer Intake', 'Active'),
+('USR-013', 'Carlos', 'NaIniwan', NULL, 'tech_carlos', '$2y$12$uBeiavTpKKb2fx5X9RxWLedJNWvYOlJ0e78PvZgDbNnDxDwoVfaTi', '09124645231', 'Technician', 'Apple & Tablet Devices', 'Active'),
+('USR-014', 'Alex', 'Eala', NULL, 'tech_alex', '$2y$12$aT/gNwWT3nDLzT794L91Gufle8BMXhb1XBmWNQvivxCaye/iaaSTO', '09231432153', 'Admin', 'System Management', 'Active');
 
 --
 -- Indexes for dumped tables
@@ -740,7 +809,7 @@ ALTER TABLE `system_user`
 -- AUTO_INCREMENT for table `deleted_customer`
 --
 ALTER TABLE `deleted_customer`
-  MODIFY `deleted_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `deleted_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Constraints for dumped tables
@@ -750,7 +819,7 @@ ALTER TABLE `deleted_customer`
 -- Constraints for table `gadget`
 --
 ALTER TABLE `gadget`
-  ADD CONSTRAINT `fk_gadget_customer` FOREIGN KEY (`customer_ID`) REFERENCES `customer` (`customer_ID`);
+  ADD CONSTRAINT `fk_gadget_customer` FOREIGN KEY (`customer_ID`) REFERENCES `customer` (`customer_ID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `invoice`
