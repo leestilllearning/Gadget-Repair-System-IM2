@@ -1,7 +1,6 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/partials/auth.php';
+requireRole(['Manager']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -20,6 +19,12 @@ if (session_status() === PHP_SESSION_NONE) {
     }
     .catalog-header h1 {
       margin: 0;
+    }
+    .catalog-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .srv-search {
       width: 280px;
@@ -44,7 +49,7 @@ if (session_status() === PHP_SESSION_NONE) {
     }
     .edit-card {
       display: none;
-      max-width: 540px;
+      max-width: 560px;
     }
     .edit-header {
       display: flex;
@@ -172,13 +177,16 @@ if (session_status() === PHP_SESSION_NONE) {
     <main class="main">
       <div class="catalog-header">
         <h1>Service Catalog</h1>
-        <input
-          id="srvSearch"
-          class="srv-search"
-          type="search"
-          placeholder="Search service, description, or price..."
-          autocomplete="off"
-        >
+        <div class="catalog-controls" id="catalogControls">
+          <input
+            id="srvSearch"
+            class="srv-search"
+            type="search"
+            placeholder="Search service, description, or price..."
+            autocomplete="off"
+          >
+          <button type="button" id="openAddSrvBtn" class="btn btn-green">+ Add Service</button>
+        </div>
       </div>
 
       <div id="catalogBanner" class="status-banner" style="margin-top:0;margin-bottom:16px;"></div>
@@ -227,6 +235,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
   <script>
     let servicesCache = [];
+    const catalogControls = document.getElementById('catalogControls');
     const tableCard = document.getElementById('tableCard');
     const editCard = document.getElementById('editCard');
     const catalogBanner = document.getElementById('catalogBanner');
@@ -331,7 +340,7 @@ if (session_status() === PHP_SESSION_NONE) {
     function showCatalogView(successMessage = '') {
       editCard.style.display = 'none';
       tableCard.style.display = 'block';
-      srvSearch.style.display = '';
+      catalogControls.style.display = 'flex';
       document.getElementById('service_id').value = '';
       document.getElementById('srvForm').reset();
       clearBanner(srvMsg);
@@ -342,6 +351,20 @@ if (session_status() === PHP_SESSION_NONE) {
       } else {
         clearBanner(catalogBanner);
       }
+    }
+
+    function openAddSrv() {
+      clearBanner(catalogBanner);
+      clearBanner(srvMsg);
+      document.getElementById('service_id').value = '';
+      document.getElementById('srvForm').reset();
+      document.getElementById('formTitle').textContent = 'Add New Service';
+      document.getElementById('saveBtn').textContent = 'Save Service';
+      tableCard.style.display = 'none';
+      catalogControls.style.display = 'none';
+      editCard.style.display = 'block';
+      updateSimilarAlert();
+      document.getElementById('service_name').focus();
     }
 
     async function loadServices() {
@@ -366,14 +389,17 @@ if (session_status() === PHP_SESSION_NONE) {
       document.getElementById('service_name').value = item.service_name;
       document.getElementById('description').value = item.description;
       document.getElementById('default_price').value = item.default_price;
+      document.getElementById('formTitle').textContent = 'Edit Service';
+      document.getElementById('saveBtn').textContent = 'Update Service';
 
       tableCard.style.display = 'none';
-      srvSearch.style.display = 'none';
+      catalogControls.style.display = 'none';
       editCard.style.display = 'block';
       updateSimilarAlert();
     }
 
     srvSearch.addEventListener('input', renderServicesTable);
+    document.getElementById('openAddSrvBtn').addEventListener('click', openAddSrv);
     document.getElementById('service_name').addEventListener('input', updateSimilarAlert);
     document.getElementById('cancelBtn').addEventListener('click', () => showCatalogView());
     document.getElementById('backToListBtn').addEventListener('click', () => showCatalogView());
@@ -383,15 +409,12 @@ if (session_status() === PHP_SESSION_NONE) {
       clearBanner(srvMsg);
 
       const serviceId = document.getElementById('service_id').value.trim();
+      const isCreate = serviceId === '';
       const serviceName = document.getElementById('service_name').value.trim();
       const description = document.getElementById('description').value.trim();
       const rawPrice = document.getElementById('default_price').value.trim();
       const priceNum = Number(rawPrice);
 
-      if (!serviceId) {
-        showBanner(srvMsg, 'error', 'Invalid Service Selected.');
-        return;
-      }
       if (!serviceName || !description) {
         showBanner(srvMsg, 'error', 'Invalid Input: Service Name And Description Are Required.');
         return;
@@ -417,17 +440,18 @@ if (session_status() === PHP_SESSION_NONE) {
         });
         const data = await res.json();
 
+        const doneMsg = isCreate ? 'Service Added Successfully.' : 'Service Updated Successfully.';
         if (res.ok && data.ok) {
-          showBanner(srvMsg, 'success', 'Service Updated Successfully.');
+          showBanner(srvMsg, 'success', doneMsg);
           await loadServices();
           setTimeout(() => {
-            showCatalogView('Service Updated Successfully.');
+            showCatalogView(doneMsg);
           }, 900);
         } else {
-          showBanner(srvMsg, 'error', data.message || data.error || 'Failed To Update Service.');
+          showBanner(srvMsg, 'error', data.message || data.error || 'Failed To Save Service.');
         }
       } catch (err) {
-        showBanner(srvMsg, 'error', 'Failed To Update Service. Check Your Server Connection.');
+        showBanner(srvMsg, 'error', 'Failed To Save Service. Check Your Server Connection.');
       } finally {
         saveBtn.disabled = false;
       }
