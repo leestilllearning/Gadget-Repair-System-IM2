@@ -1,10 +1,11 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/partials/auth.php';
+requireRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
 require_once __DIR__ . '/api/db.php';
 
 $id = trim((string)($_GET['id'] ?? 'REQ-001'));
+$staffRole = $_SESSION['staff']['role'] ?? '';
+$canViewInvoice = in_array($staffRole, ['Cashier', 'Manager', 'Admin', 'Receptionist'], true);
 $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORDER BY service_ID ASC')->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -142,7 +143,7 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       flex-wrap: wrap;
       margin-bottom: 8px;
     }
-    select, input[type="number"] {
+    select, input[type="number"], input[type="text"].svc-search-box {
       padding: 9px 12px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
@@ -150,6 +151,10 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       font-size: 13.5px;
       background: #ffffff;
       color: #0f172a;
+    }
+    input[type="text"].svc-search-box:focus {
+      outline: 2px solid #047857;
+      border-color: #047857;
     }
     .btn-green {
       background: #047857;
@@ -229,6 +234,68 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       font-weight: 600;
       margin-bottom: 5px;
     }
+    .svc-picker-wrap {
+      position: relative;
+      flex: 2;
+      min-width: 240px;
+    }
+    .svc-suggest-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 260px;
+      overflow-y: auto;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+      z-index: 50;
+    }
+    .svc-suggest-menu.open {
+      display: block;
+    }
+    .svc-suggest-group {
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      background: #f8fafc;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .svc-suggest-item {
+      width: 100%;
+      border: none;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 9px 12px;
+      text-align: left;
+      font: inherit;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .svc-suggest-item:last-child {
+      border-bottom: none;
+    }
+    .svc-suggest-item:hover,
+    .svc-suggest-item.highlighted {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .svc-suggest-price {
+      font-weight: 700;
+      color: #047857;
+      white-space: nowrap;
+      font-size: 12.5px;
+    }
     .rec-services {
       margin-top: 8px;
       padding: 10px 12px;
@@ -285,7 +352,9 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
           <h1 id="detailTitle">Repair Request</h1>
           <span id="detailBadge" class="status-badge">Received</span>
         </div>
-        <a id="topInvoiceLink" href="invoices.php" style="font-size:13.5px;color:#0f172a;font-weight:600;text-decoration:underline;">View Invoice</a>
+        <?php if ($canViewInvoice): ?>
+          <a id="topInvoiceLink" href="invoices.php" style="font-size:13.5px;color:#0f172a;font-weight:600;text-decoration:underline;">View Invoice</a>
+        <?php endif; ?>
       </div>
 
       <div class="step-bar" id="stepBar"></div>
@@ -361,10 +430,18 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
               </tfoot>
             </table>
 
-            <form id="addServiceForm" class="add-svc-bar">
-              <div style="flex:2;min-width:210px;">
-                <label for="svcSelect">Add Service</label>
-                <select id="svcSelect" style="width:100%;"></select>
+            <form id="addServiceForm" class="add-svc-bar" autocomplete="off">
+              <div class="svc-picker-wrap" id="svcPickerWrap">
+                <label for="svcSearchInput">Search &amp; Select Service</label>
+                <input
+                  id="svcSearchInput"
+                  class="svc-search-box"
+                  type="text"
+                  placeholder="Type service name (e.g., LCD, RAM, Port, Battery)..."
+                  style="width:100%;"
+                >
+                <input type="hidden" id="svcSelectedId" value="">
+                <div id="svcSuggestMenu" class="svc-suggest-menu" role="listbox"></div>
                 <div id="consoleRecBox" class="rec-services" style="display:none;"></div>
               </div>
               <div style="width:90px;">
@@ -373,25 +450,28 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
               </div>
               <div style="width:140px;">
                 <label for="svcActualPrice">Actual Price (₱)</label>
-                <input id="svcActualPrice" type="number" step="0.01" min="0" value="1500" style="width:100%;">
+                <input id="svcActualPrice" type="number" step="0.01" min="0" value="0.00" style="width:100%;">
               </div>
               <div>
                 <button type="submit" class="btn-green">Add</button>
               </div>
             </form>
+            <div id="svcAddErr" style="margin-top:8px;font-size:12.5px;font-weight:600;color:#b91c1c;"></div>
           </section>
 
-          <section class="card">
-            <div class="invoice-box">
-              <div>
-                <h2 style="margin-bottom:4px;">Invoice</h2>
-                <p id="invoiceDesc" style="margin:0;font-size:13px;color:#64748b;">
-                  No Invoice Yet. It is Created from the Services above.
-                </p>
+          <?php if ($canViewInvoice): ?>
+            <section class="card">
+              <div class="invoice-box">
+                <div>
+                  <h2 style="margin-bottom:4px;">Invoice</h2>
+                  <p id="invoiceDesc" style="margin:0;font-size:13px;color:#64748b;">
+                    No Invoice Yet. It is Created from the Services above.
+                  </p>
+                </div>
+                <a id="genInvoiceBtn" href="invoices.php" class="btn-outline">Generate Invoice</a>
               </div>
-              <a id="genInvoiceBtn" href="invoices.php" class="btn-outline">Generate Invoice</a>
-            </div>
-          </section>
+            </section>
+          <?php endif; ?>
         </div>
       </div>
     </main>
@@ -399,6 +479,7 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
 
   <script>
     const reqId = <?= json_encode($id) ?>;
+    const canViewInvoice = <?= $canViewInvoice ? 'true' : 'false' ?>;
     const allServices = <?= json_encode(array_map(fn($s) => [
         'service_id'    => $s['service_ID'],
         'service_name'  => $s['service_name'],
@@ -448,11 +529,18 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       return map[s] || 'Received';
     }
 
-    const svcSelect = document.getElementById('svcSelect');
+    const svcPickerWrap = document.getElementById('svcPickerWrap');
+    const svcSearchInput = document.getElementById('svcSearchInput');
+    const svcSelectedId = document.getElementById('svcSelectedId');
+    const svcSuggestMenu = document.getElementById('svcSuggestMenu');
     const svcActualPrice = document.getElementById('svcActualPrice');
+    const svcAddErr = document.getElementById('svcAddErr');
     const consoleRecBox = document.getElementById('consoleRecBox');
     const serviceRowsEl = document.getElementById('serviceRows');
+
     let currentRequest = null;
+    let activeHighlightIdx = -1;
+    let visibleSuggestions = [];
 
     function peso(n) {
       return '₱' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
@@ -508,50 +596,136 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       return matches.length ? matches.slice(0, 5) : allServices.slice(0, 4);
     }
 
-    function syncPriceWithSelectedService() {
-      const opt = svcSelect.options[svcSelect.selectedIndex];
-      if (opt && opt.dataset.price !== undefined) {
-        svcActualPrice.value = Number(opt.dataset.price || 0).toFixed(2);
+    function selectServiceItem(srv, keepMenuClosed = true) {
+      if (!srv) return;
+      svcSelectedId.value = srv.service_id;
+      svcSearchInput.value = srv.service_name;
+      svcActualPrice.value = Number(srv.default_price || 0).toFixed(2);
+      svcAddErr.textContent = '';
+      if (keepMenuClosed) {
+        closeSuggestMenu();
       }
     }
 
-    function renderServiceDropdown(req) {
+    function openSuggestMenu() {
+      renderServiceSuggestions(svcSearchInput.value);
+      svcSuggestMenu.classList.add('open');
+    }
+
+    function closeSuggestMenu() {
+      svcSuggestMenu.classList.remove('open');
+      activeHighlightIdx = -1;
+    }
+
+    function getScoredMatches(query, req) {
+      const q = String(query || '').trim().toLowerCase();
+      const recommended = getRecommendedConsoleServices(req);
+      const recIds = new Set(recommended.map(s => String(s.service_id)));
+
+      if (!q) {
+        const recList = recommended.map(s => ({ ...s, _group: 'Recommended For Console', _score: 999 }));
+        const otherList = allServices
+          .filter(s => !recIds.has(String(s.service_id)))
+          .map(s => ({ ...s, _group: recommended.length ? 'All Services' : '', _score: 0 }));
+        return [...recList, ...otherList];
+      }
+
+      const terms = q.split(/\s+/).filter(Boolean);
+      const scored = [];
+
+      for (const s of allServices) {
+        const nameLower = String(s.service_name || '').toLowerCase();
+        const priceStr = String(s.default_price ?? '');
+        let score = 0;
+
+        if (nameLower === q) score += 200;
+        else if (nameLower.startsWith(q)) score += 120;
+        else if (nameLower.includes(q)) score += 80;
+
+        let allTermsMatched = true;
+        for (const t of terms) {
+          if (nameLower.includes(t) || priceStr.includes(t)) {
+            score += 25;
+          } else {
+            allTermsMatched = false;
+          }
+        }
+
+        if (recIds.has(String(s.service_id))) score += 15;
+
+        if (score > 0 && (allTermsMatched || terms.length === 1)) {
+          scored.push({ ...s, _group: 'Matching Services', _score: score });
+        }
+      }
+
+      scored.sort((a, b) => b._score - a._score || a.service_name.localeCompare(b.service_name));
+      return scored;
+    }
+
+    function renderServiceSuggestions(query = '') {
+      visibleSuggestions = getScoredMatches(query, currentRequest);
+      activeHighlightIdx = visibleSuggestions.length ? 0 : -1;
+
+      if (!visibleSuggestions.length) {
+        svcSuggestMenu.innerHTML = `
+          <div style="padding:10px 12px;font-size:12.5px;color:#64748b;">
+            No matching service for "<strong>${esc(query)}</strong>". Try another keyword.
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      let lastGroup = null;
+      visibleSuggestions.forEach((item, idx) => {
+        if (item._group && item._group !== lastGroup) {
+          lastGroup = item._group;
+          html += `<div class="svc-suggest-group">${esc(lastGroup)}</div>`;
+        }
+        const hi = idx === activeHighlightIdx ? 'highlighted' : '';
+        html += `
+          <button
+            type="button"
+            class="svc-suggest-item ${hi}"
+            data-idx="${idx}"
+            onmouseenter="highlightSuggestion(${idx})"
+          >
+            <span>${esc(item.service_name)}</span>
+            <span class="svc-suggest-price">${peso(item.default_price)}</span>
+          </button>
+        `;
+      });
+
+      svcSuggestMenu.innerHTML = html;
+
+      svcSuggestMenu.querySelectorAll('.svc-suggest-item').forEach(btn => {
+        btn.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          const chosen = visibleSuggestions[Number(btn.dataset.idx)];
+          if (chosen) {
+            selectServiceItem(chosen, true);
+          }
+        });
+      });
+    }
+
+    function highlightSuggestion(idx) {
+      activeHighlightIdx = idx;
+      svcSuggestMenu.querySelectorAll('.svc-suggest-item').forEach((btn, i) => {
+        btn.classList.toggle('highlighted', i === idx);
+      });
+    }
+
+    function renderServicePicker(req) {
       if (!allServices.length) return;
 
       const isConsole = isConsoleRequest(req);
       const recommended = getRecommendedConsoleServices(req);
-      const recIds = new Set(recommended.map(s => String(s.service_id)));
 
-      let optionsHtml = '';
-      if (isConsole && recommended.length) {
-        optionsHtml += `<optgroup label="Recommended For Console">`;
-        optionsHtml += recommended.map(s => `
-          <option value="${esc(s.service_id)}" data-price="${Number(s.default_price || 0)}" data-name="${esc(s.service_name)}">
-            ${esc(s.service_name)} · ${peso(s.default_price)}
-          </option>
-        `).join('');
-        optionsHtml += `</optgroup>`;
-
-        const rest = allServices.filter(s => !recIds.has(String(s.service_id)));
-        if (rest.length) {
-          optionsHtml += `<optgroup label="Other Services">`;
-          optionsHtml += rest.map(s => `
-            <option value="${esc(s.service_id)}" data-price="${Number(s.default_price || 0)}" data-name="${esc(s.service_name)}">
-              ${esc(s.service_name)} · ${peso(s.default_price)}
-            </option>
-          `).join('');
-          optionsHtml += `</optgroup>`;
-        }
-      } else {
-        optionsHtml = allServices.map(s => `
-          <option value="${esc(s.service_id)}" data-price="${Number(s.default_price || 0)}" data-name="${esc(s.service_name)}">
-            ${esc(s.service_name)} · ${peso(s.default_price)}
-          </option>
-        `).join('');
+      if (!svcSelectedId.value) {
+        const initial = recommended[0] || allServices[0];
+        selectServiceItem(initial, true);
       }
-
-      svcSelect.innerHTML = optionsHtml;
-      syncPriceWithSelectedService();
 
       if (isConsole && recommended.length) {
         consoleRecBox.style.display = 'block';
@@ -568,8 +742,10 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
 
         consoleRecBox.querySelectorAll('.rec-chip').forEach(btn => {
           btn.addEventListener('click', () => {
-            svcSelect.value = btn.dataset.id;
-            syncPriceWithSelectedService();
+            const found = allServices.find(s => String(s.service_id) === String(btn.dataset.id));
+            if (found) {
+              selectServiceItem(found, true);
+            }
           });
         });
       } else {
@@ -578,7 +754,52 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
       }
     }
 
-    svcSelect.addEventListener('change', syncPriceWithSelectedService);
+    svcSearchInput.addEventListener('focus', openSuggestMenu);
+    svcSearchInput.addEventListener('click', openSuggestMenu);
+    svcSearchInput.addEventListener('input', () => {
+      const typed = svcSearchInput.value.trim().toLowerCase();
+      const exact = allServices.find(s => String(s.service_name || '').toLowerCase() === typed);
+      if (exact) {
+        svcSelectedId.value = exact.service_id;
+        svcActualPrice.value = Number(exact.default_price || 0).toFixed(2);
+      } else {
+        svcSelectedId.value = '';
+      }
+      renderServiceSuggestions(svcSearchInput.value);
+      svcSuggestMenu.classList.add('open');
+    });
+
+    svcSearchInput.addEventListener('keydown', (e) => {
+      if (!svcSuggestMenu.classList.contains('open')) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          openSuggestMenu();
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (visibleSuggestions.length) {
+          highlightSuggestion((activeHighlightIdx + 1) % visibleSuggestions.length);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (visibleSuggestions.length) {
+          highlightSuggestion((activeHighlightIdx - 1 + visibleSuggestions.length) % visibleSuggestions.length);
+        }
+      } else if (e.key === 'Enter' && activeHighlightIdx >= 0 && visibleSuggestions[activeHighlightIdx]) {
+        e.preventDefault();
+        selectServiceItem(visibleSuggestions[activeHighlightIdx], true);
+      } else if (e.key === 'Escape') {
+        closeSuggestMenu();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!svcPickerWrap.contains(e.target)) {
+        closeSuggestMenu();
+      }
+    });
 
     async function loadDetail() {
       const res = await fetch(`api/endpoints.php?action=request_detail&id=${encodeURIComponent(reqId)}&_=${Date.now()}`, {
@@ -598,12 +819,19 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
 
       document.getElementById('statusSelect').value = normalizedStatus;
 
-      if (r.invoice_id) {
+      if (canViewInvoice && r.invoice_id) {
         const invHref = `invoices.php?id=${encodeURIComponent(r.invoice_id)}`;
-        document.getElementById('topInvoiceLink').href = invHref;
-        document.getElementById('genInvoiceBtn').href = invHref;
-        document.getElementById('genInvoiceBtn').textContent = `Open ${r.invoice_code}`;
-        document.getElementById('invoiceDesc').textContent = `Invoice ${r.invoice_code} Is Linked To This Repair Request.`;
+        const topLink = document.getElementById('topInvoiceLink');
+        const genBtn = document.getElementById('genInvoiceBtn');
+        const invDesc = document.getElementById('invoiceDesc');
+        if (topLink) topLink.href = invHref;
+        if (genBtn) {
+          genBtn.href = invHref;
+          genBtn.textContent = `Open ${r.invoice_code}`;
+        }
+        if (invDesc) {
+          invDesc.textContent = `Invoice ${r.invoice_code} Is Linked To This Repair Request.`;
+        }
       }
 
       const activeIdx = stages.indexOf(normalizedStatus);
@@ -680,7 +908,7 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
 
       document.getElementById('serviceTotal').textContent = peso(sum);
 
-      renderServiceDropdown(r);
+      renderServicePicker(r);
     }
 
     serviceRowsEl.addEventListener('click', async (e) => {
@@ -731,14 +959,28 @@ $services = $pdo->query('SELECT service_ID, service_name, price FROM service ORD
 
     document.getElementById('addServiceForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const opt = svcSelect.options[svcSelect.selectedIndex];
+      svcAddErr.textContent = '';
+
+      const typed = svcSearchInput.value.trim().toLowerCase();
+      let matched = allServices.find(s => String(s.service_id) === String(svcSelectedId.value));
+      if (!matched && typed) {
+        matched = allServices.find(s => String(s.service_name || '').toLowerCase() === typed)
+          || allServices.find(s => String(s.service_name || '').toLowerCase().includes(typed));
+      }
+
+      if (!matched) {
+        svcAddErr.textContent = 'Please type or pick a valid service from the suggestions.';
+        openSuggestMenu();
+        return;
+      }
+
       await fetch('api/endpoints.php?action=add_request_service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           request_id: reqId,
-          service_id: opt.value,
-          service_label: opt.dataset.name,
+          service_id: matched.service_id,
+          service_label: matched.service_name,
           quantity: Number(document.getElementById('svcQty').value),
           actual_price: Number(svcActualPrice.value)
         })
