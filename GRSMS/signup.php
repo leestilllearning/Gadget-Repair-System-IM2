@@ -251,7 +251,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 placeholder="09XXXXXXXXX"
                 required
               >
-              <span class="field-hint">11 Digits Only (Max 11 Characters).</span>
+              <span class="field-hint"></span>
             </div>
             <div class="field">
               <label for="role">Role <span class="req-star">*</span></label>
