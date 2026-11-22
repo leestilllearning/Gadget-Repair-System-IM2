@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/partials/auth.php';
+requireRole(['Cashier', 'Manager', 'Admin']);
 $selectedId = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
 $defaultRecorder = $_SESSION['staff']['full_name'] ?? 'Camille Torres';
 ?>
@@ -332,7 +333,7 @@ $defaultRecorder = $_SESSION['staff']['full_name'] ?? 'Camille Torres';
 
         <div id="recordPaymentCard" class="card">
           <h3 style="margin:0 0 4px;font-size:16px;">Record A Payment</h3>
-          
+
           <form id="payForm">
             <div class="grid-2">
               <div class="field">
