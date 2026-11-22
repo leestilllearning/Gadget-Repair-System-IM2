@@ -2,6 +2,9 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once __DIR__ . '/partials/auth.php';
+requireRole(['Manager', 'Admin']);
+
 $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
 ?>
 <!DOCTYPE html>
@@ -130,8 +133,7 @@ $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
         </div>
 
         <div class="card">
-          <h2 style="margin:0 0 4px;font-size:18px;font-weight:700;">Add a staff account</h2>
-          
+          <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;">Add a staff account</h2>
 
           <form id="addStaffForm">
             <div class="field"><label for="first_name">First Name</label><input id="first_name" type="text" required></div>
@@ -147,10 +149,11 @@ $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
                 <option value="Receptionist">Receptionist</option>
                 <option value="Admin">Admin</option>
                 <option value="Cashier">Cashier</option>
+                <option value="Manager">Manager</option>
               </select>
             </div>
-            <div class="field">
-              <label for="specialization">Specialization (Technicians only)</label>
+            <div class="field" id="addSpecWrap">
+              <label for="specialization">Specialization (Technicians &amp; Staff)</label>
               <input id="specialization" type="text" placeholder="e.g., Apple & Tablet Devices">
             </div>
             <button type="submit" class="btn btn-green" style="width:100%;">Create account</button>
@@ -163,6 +166,20 @@ $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
 
   <script>
     const isManager = <?= $isManager ? 'true' : 'false' ?>;
+    const addRoleSelect = document.getElementById('role');
+    const addSpecWrap = document.getElementById('addSpecWrap');
+    const addSpecInput = document.getElementById('specialization');
+
+    function syncAddRoleSpec() {
+      if (addRoleSelect.value === 'Manager') {
+        addSpecWrap.style.display = 'none';
+        addSpecInput.value = '';
+      } else {
+        addSpecWrap.style.display = 'block';
+      }
+    }
+    addRoleSelect.addEventListener('change', syncAddRoleSpec);
+    syncAddRoleSpec();
 
     function esc(v) {
       return String(v ?? '')
@@ -219,6 +236,7 @@ $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
     document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('staffMsg');
+      const selectedRole = addRoleSelect.value;
       const res = await fetch('api/endpoints.php?action=create_staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -229,14 +247,15 @@ $isManager = (($_SESSION['staff']['role'] ?? '') === 'Manager');
           username: document.getElementById('username').value.trim(),
           password: document.getElementById('password').value,
           contact_number: document.getElementById('contact_number').value.trim(),
-          role: document.getElementById('role').value,
-          specialization: document.getElementById('specialization').value.trim() || null,
+          role: selectedRole,
+          specialization: selectedRole === 'Manager' ? null : (addSpecInput.value.trim() || null),
           account_status: 'Active'
         })
       });
       const data = await res.json();
       if (res.ok && data.ok) {
         e.target.reset();
+        syncAddRoleSpec();
         msg.style.color = '#15803d';
         msg.textContent = 'Staff account created.';
         loadStaff();
