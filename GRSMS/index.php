@@ -1,19 +1,5 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Always show login screen first when opening index.php directly
-if (!isset($_GET['from_login'])) {
-    header('Location: login.php');
-    exit;
-}
-
-if (empty($_SESSION['staff'])) {
-    header('Location: login.php');
-    exit;
-}
-
+require_once __DIR__ . '/partials/auth.php';
 require_once __DIR__ . '/api/db.php';
 
 $counts = [
@@ -24,6 +10,7 @@ $counts = [
 ];
 
 $staffRole = $_SESSION['staff']['role'] ?? '';
+$isManager = ($staffRole === 'Manager');
 $isManagerOrAdmin = in_array($staffRole, ['Manager', 'Admin'], true);
 
 $allRequestsForAssign = [];
@@ -168,34 +155,44 @@ if ($isManagerOrAdmin) {
       <div class="page-header">
         <h1>Gadget Repair Shop Overview</h1>
         <div class="header-actions">
-          <a class="btn btn-green" href="new_request.php">+ New Repair Request</a>
+          <?php if (in_array($staffRole, ['Receptionist', 'Manager', 'Admin'], true)): ?>
+            <a class="btn btn-green" href="new_request.php">+ New Repair Request</a>
+          <?php endif; ?>
         </div>
       </div>
 
       <div class="overview-grid">
-        <div class="overview-card">
-          <strong>Repair Requests</strong>
-          <div class="overview-num"><?= $counts['requests'] ?></div>
-          <a class="overview-link" href="repair_requests.php">Manage Repair Requests →</a>
-        </div>
+        <?php if (in_array($staffRole, ['Technician', 'Receptionist', 'Manager', 'Admin'], true)): ?>
+          <div class="overview-card">
+            <strong>Repair Requests</strong>
+            <div class="overview-num"><?= $counts['requests'] ?></div>
+            <a class="overview-link" href="repair_requests.php">Manage Repair Requests →</a>
+          </div>
+        <?php endif; ?>
 
-        <div class="overview-card">
-          <strong>Invoices</strong>
-          <div class="overview-num"><?= $counts['invoices'] ?></div>
-          <a class="overview-link" href="invoices.php">View &amp; Record Payments →</a>
-        </div>
+        <?php if (in_array($staffRole, ['Cashier', 'Manager', 'Admin'], true)): ?>
+          <div class="overview-card">
+            <strong>Invoices</strong>
+            <div class="overview-num"><?= $counts['invoices'] ?></div>
+            <a class="overview-link" href="invoices.php">View &amp; Record Payments →</a>
+          </div>
+        <?php endif; ?>
 
-        <div class="overview-card">
-          <strong>Customers</strong>
-          <div class="overview-num"><?= $counts['customers'] ?></div>
-          <a class="overview-link" href="customer_gadgets.php">Browse Customers &amp; Gadgets →</a>
-        </div>
+        <?php if (in_array($staffRole, ['Receptionist', 'Manager', 'Admin'], true)): ?>
+          <div class="overview-card">
+            <strong>Customers</strong>
+            <div class="overview-num"><?= $counts['customers'] ?></div>
+            <a class="overview-link" href="customer_gadgets.php">Browse Customers &amp; Gadgets →</a>
+          </div>
+        <?php endif; ?>
 
-        <div class="overview-card">
-          <strong>Services</strong>
-          <div class="overview-num"><?= $counts['services'] ?></div>
-          <a class="overview-link" href="service_catalog.php">Edit Service Catalog →</a>
-        </div>
+        <?php if ($isManager): ?>
+          <div class="overview-card">
+            <strong>Services</strong>
+            <div class="overview-num"><?= $counts['services'] ?></div>
+            <a class="overview-link" href="service_catalog.php">Manage Service Catalog →</a>
+          </div>
+        <?php endif; ?>
       </div>
 
       <?php if ($isManagerOrAdmin): ?>
@@ -203,7 +200,6 @@ if ($isManagerOrAdmin) {
           <div class="mgr-header">
             <div>
               <h2>Manager Operations &amp; Oversight</h2>
-              
             </div>
             <span id="mgrPendingBadge" class="mgr-badge">Pending Payments: 0</span>
           </div>
