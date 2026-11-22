@@ -50,6 +50,15 @@ if ($sessionUserId !== '') {
     }
 }
 
+function requireApiRole(array $allowedRoles): void {
+    $role = $_SESSION['staff']['role'] ?? '';
+    if (!in_array($role, $allowedRoles, true)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'message' => 'You do not have permission to perform this action.']);
+        exit;
+    }
+}
+
 function nextPrefixedId(PDO $pdo, string $table, string $col, string $prefix, int $pad = 3): string {
     $stmt = $pdo->query("SELECT $col FROM $table");
     $max = 0;
@@ -240,6 +249,7 @@ try {
 
         case 'staff_list':
         case 'staff':
+            requireApiRole(['Manager', 'Admin']);
             $stmt = $pdo->query("
                 SELECT user_id,
                        TRIM(CONCAT(first_name, ' ', IFNULL(CONCAT(middle_name, ' '), ''), last_name)) AS full_name,
@@ -253,11 +263,7 @@ try {
             break;
 
         case 'toggle_staff_status':
-            if (($_SESSION['staff']['role'] ?? '') !== 'Manager') {
-                http_response_code(403);
-                echo json_encode(['ok' => false, 'message' => 'Only the Manager can update worker account status.']);
-                exit;
-            }
+            requireApiRole(['Manager']);
             $targetId = trim((string)($input['user_id'] ?? ''));
             $newStatus = ($input['account_status'] ?? '') === 'Inactive' ? 'Inactive' : 'Active';
 
@@ -267,6 +273,7 @@ try {
             break;
 
         case 'manager_overview':
+            requireApiRole(['Manager', 'Admin']);
             $stalledStmt = $pdo->query("
                 SELECT * FROM (
                     SELECT r.repair_request_ID AS request_id,
@@ -352,12 +359,7 @@ try {
             break;
 
         case 'reassign_technician':
-            $role = $_SESSION['staff']['role'] ?? '';
-            if (!in_array($role, ['Manager', 'Admin'], true)) {
-                http_response_code(403);
-                echo json_encode(['ok' => false, 'message' => 'Only a Manager or Admin can reassign technicians.']);
-                exit;
-            }
+            requireApiRole(['Manager', 'Admin']);
 
             $reqId = trim((string)($input['request_id'] ?? ''));
             $techId = trim((string)($input['assigned_tech_id'] ?? ''));
@@ -376,6 +378,7 @@ try {
 
         case 'repair_summary':
         case 'repair_requests':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $staffRole = $_SESSION['staff']['role'] ?? null;
             $staffSpec = $_SESSION['staff']['specialization'] ?? null;
 
@@ -453,6 +456,7 @@ try {
             break;
 
         case 'create_request_full':
+            requireApiRole(['Receptionist', 'Manager', 'Admin']);
             $pdo->beginTransaction();
 
             $existingCustomerId = trim((string)($input['existing_customer_id'] ?? ''));
@@ -588,6 +592,7 @@ try {
             break;
 
         case 'request_detail':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $id = trim((string)($_GET['id'] ?? 'REQ-001'));
             $stmt = $pdo->prepare("
                 SELECT r.repair_request_ID AS request_id,
@@ -664,6 +669,7 @@ try {
 
         case 'update_request_status':
         case 'update_status':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $reqId = trim((string)($input['request_id'] ?? ''));
             $newStatus = trim((string)($input['status'] ?? 'Received'));
 
@@ -686,6 +692,7 @@ try {
             break;
 
         case 'add_request_service':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $reqId = trim((string)($input['request_id'] ?? ''));
             $serviceId = trim((string)($input['service_id'] ?? ''));
             $qty = max(1, (int)($input['quantity'] ?? 1));
@@ -730,6 +737,7 @@ try {
             break;
 
         case 'remove_request_service':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $reqId = trim((string)($input['request_id'] ?? ''));
             $itemId = trim((string)($input['item_id'] ?? ''));
             $serviceId = trim((string)($input['service_id'] ?? ''));
@@ -807,6 +815,7 @@ try {
 
         case 'invoices_list':
         case 'invoices':
+            requireApiRole(['Cashier', 'Manager', 'Admin']);
             $stmt = $pdo->query("
                 SELECT i.invoice_ID AS invoice_id,
                        i.invoice_ID AS invoice_code,
@@ -832,6 +841,7 @@ try {
             break;
 
         case 'invoice_detail':
+            requireApiRole(['Cashier', 'Manager', 'Admin']);
             $id = trim((string)($_GET['id'] ?? ''));
             $stmt = $pdo->prepare("
                 SELECT i.invoice_ID AS invoice_id,
@@ -913,6 +923,7 @@ try {
             break;
 
         case 'record_payment':
+            requireApiRole(['Cashier', 'Manager', 'Admin']);
             $invoiceId  = trim((string)($input['invoice_id'] ?? ''));
             if ($invoiceId === '') {
                 http_response_code(400);
@@ -974,6 +985,7 @@ try {
             break;
 
         case 'complete_payment':
+            requireApiRole(['Cashier', 'Manager', 'Admin']);
             $paymentId = trim((string)($input['payment_id'] ?? ''));
             $invoiceId = trim((string)($input['invoice_id'] ?? ''));
             if ($paymentId === '' || $invoiceId === '') {
@@ -993,6 +1005,7 @@ try {
             break;
 
         case 'update_invoice_status':
+            requireApiRole(['Cashier', 'Manager', 'Admin']);
             $invoiceId = trim((string)($input['invoice_id'] ?? ''));
             $status = trim($input['payment_status'] ?? 'Unpaid');
             $allowed = ['Unpaid', 'Pending', 'Partially Paid', 'Paid'];
@@ -1021,6 +1034,7 @@ try {
             break;
 
         case 'save_customer':
+            requireApiRole(['Receptionist', 'Manager', 'Admin']);
             $customerId    = trim((string)($input['customer_id'] ?? ''));
             $firstName     = trim((string)($input['first_name'] ?? ''));
             $middleName    = trim((string)($input['middle_name'] ?? ''));
@@ -1097,11 +1111,7 @@ try {
             break;
 
         case 'delete_customer':
-            if (($_SESSION['staff']['role'] ?? '') !== 'Admin') {
-                http_response_code(403);
-                echo json_encode(['ok' => false, 'message' => 'Only an Admin can delete a customer.']);
-                exit;
-            }
+            requireApiRole(['Admin']);
 
             $customerId = trim((string)($input['customer_id'] ?? ''));
             if ($customerId === '') {
@@ -1174,6 +1184,7 @@ try {
 
         case 'customers_and_gadgets':
         case 'customers_gadgets':
+            requireApiRole(['Receptionist', 'Manager', 'Admin']);
             $q = '%' . trim($input['q'] ?? ($_GET['q'] ?? '')) . '%';
             $cStmt = $pdo->prepare("
                 SELECT customer_ID AS customer_id,
@@ -1239,11 +1250,13 @@ try {
 
         case 'services_list':
         case 'services':
+            requireApiRole(['Technician', 'Receptionist', 'Manager', 'Admin']);
             $stmt = $pdo->query('SELECT service_ID AS service_id, service_name, description, price AS default_price FROM service ORDER BY service_ID ASC');
             echo json_encode($stmt->fetchAll());
             break;
 
         case 'save_service':
+            requireApiRole(['Manager']);
             $id = trim((string)($input['service_id'] ?? ''));
             $name = trim($input['service_name'] ?? '');
             $desc = trim($input['description'] ?? '');
